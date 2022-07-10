@@ -62,6 +62,11 @@ func ExistingDevices(queue chan Device, errs chan error, matcher netlink.Matcher
 					env["SUBSYSTEM"] = filepath.Base(link)
 				}
 
+				// Append to env serial if existing
+				if serial, err := getSerialFromSerialFile(kObj + "/serial"); err == nil && serial != "" {
+					env["SERIAL"] = serial
+				}
+
 				if matcher == nil || matcher.EvaluateEnv(env) {
 					queue <- Device{
 						KObj: kObj,
@@ -79,6 +84,21 @@ func ExistingDevices(queue chan Device, errs chan error, matcher netlink.Matcher
 		close(queue)
 	}()
 	return quit
+}
+
+func getSerialFromSerialFile(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	data, err := ioutil.ReadAll(f)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(string(data)), nil
 }
 
 // getEventFromUEventFile return all env var define in file
